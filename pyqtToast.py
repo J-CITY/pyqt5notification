@@ -14,6 +14,24 @@ IMAGE_ALIGN_RIGHT = "right"
 TEXT_ALIGN_LEFT = "left"
 TEXT_ALIGN_RIGHT = "right"
 TEXT_ALIGN_CENTER = "center"
+
+class ActionType(Enum):
+    TEXT = 1
+    SELECT = 2
+class Action:
+    def __init__(self):
+        self.type = ActionType.TEXT
+        self.bgColor = (79, 79, 79)
+        self.fgColor = (242, 242, 242)
+        self.help = ""
+        self.options = []
+
+class Button:
+    def __init__(self):
+        self.bgColor = (79, 79, 79)
+        self.fgColor = (242, 242, 242)
+        self.text = ""
+        self.icon = None
 class Config:
     def __init__(self):
         self.DURATION = 5000
@@ -30,6 +48,9 @@ class Config:
         self.TITLE = ""
         self.MESSAGE = ""
 
+        self.ACTIONS = dict()
+        self.BUTTONS = dict()
+        self.CALLBACK = None
 class Toast(QtWidgets.QWidget):
     popuphidden = QtCore.pyqtSignal()
 
