@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtMultimedia import QSound
 import sys
 
 IMAGE_ALIGN_LEFT = "left"
@@ -82,6 +83,10 @@ class Toast(QtWidgets.QWidget):
             
         if (self.config.IMAGE != "" and self.config.IMAGE_ALIGN == IMAGE_ALIGN_LEFT):
             self.hLayout.addWidget(self.label)
+
+        if self.config.SOUND != "":
+            self._sound = QSound(self.config.SOUND)
+            self._sound.play()
 
     def setPopupText(self, text):
         self.label.setText(text)
@@ -172,5 +177,6 @@ if __name__ == '__main__':
     toast = Toast("SIMPLE TITLE", "SIMPLE MESSAGE", "image.png")
     toast.config.IMAGE_ALIGN = IMAGE_ALIGN_RIGHT
     toast.config.TEXT_ALIGN = TEXT_ALIGN_RIGHT
+    toast.config.SOUND = "sound.wav"
     toast.show()
     sys.exit(app.exec_())
