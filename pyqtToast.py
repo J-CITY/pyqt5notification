@@ -132,7 +132,7 @@ class Toast(QtWidgets.QWidget):
         
         if self.config.IMAGE != "":
             self.limage = QtWidgets.QLabel(self)
-            self.limage.setStyleSheet("border: 1px solid black;") 
+            #self.limage.setStyleSheet("border: 1px solid black;") 
             if self.config.IMAGE_CROP == ImageCrop.CIRCLE:
                 imgdata = open(self.config.IMAGE, 'rb').read() 
                 pixmap = self._maskImage(imgdata, Path(self.config.IMAGE).suffix, self.config.IMAGE_SIZE[0])
