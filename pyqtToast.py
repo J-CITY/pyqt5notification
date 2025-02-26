@@ -4,6 +4,13 @@ import sys
 from enum import Enum
 from pathlib import Path
 
+_HAS_BLUR_LIB = False
+try:
+    from BlurWindow.blurWindow import GlobalBlur
+    _HAS_BLUR_LIB = True
+except ImportError or ModuleNotFoundError:
+    pass
+
 class ImageCrop(Enum):
     DEFAULT = 1
     CIRCLE = 2
@@ -36,7 +43,7 @@ class Config:
     def __init__(self):
         self.DURATION = 5000
         self.ANIM_SHOW_HIDE_TIME = 500
-        self.BG_COLOR = (79, 79, 79)
+        self.BG_COLOR = (79, 79, 79, 255)
         self.FG_COLOR = (242, 242, 242)
         self.IMAGE_SIZE = (100, 100)
         self.IMAGE_ALIGN = IMAGE_ALIGN_LEFT
@@ -47,6 +54,8 @@ class Config:
         self.SOUND = ""
         self.TITLE = ""
         self.MESSAGE = ""
+
+        self.USE_BLUR_BG = False
 
         self.ACTIONS = dict()
         self.BUTTONS = dict()
@@ -70,6 +79,7 @@ class Toast(QtWidgets.QWidget):
         
         super(Toast, self).__init__()
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         self.setMinimumSize(QtCore.QSize(300, 100))
         self.animation = QtCore.QPropertyAnimation(self, b"windowOpacity", self)
@@ -144,7 +154,7 @@ class Toast(QtWidgets.QWidget):
             self.hLayout.addWidget(self.label)
         appearance = self.palette()
         appearance.setColor(QtGui.QPalette.All, QtGui.QPalette.Window,
-                     QtGui.QColor(self.config.BG_COLOR[0],self.config.BG_COLOR[1],self.config.BG_COLOR[2]))
+                     QtGui.QColor(self.config.BG_COLOR[0],self.config.BG_COLOR[1],self.config.BG_COLOR[2],self.config.BG_COLOR[3]))
         self.setPalette(appearance)
         
         pal = self.label.palette()
@@ -170,6 +180,18 @@ class Toast(QtWidgets.QWidget):
         if self.config.SOUND != "":
             self._sound = QSound(self.config.SOUND)
             self._sound.play()
+
+        if _HAS_BLUR_LIB == True and self.config.USE_BLUR_BG == True:
+            GlobalBlur(self.winId(),Acrylic=False, Dark=True,QWidget=self)
+
+    def paintEvent(self, event):
+        backgroundColor = self.palette().light().color()
+        backgroundColor.setRed(self.config.BG_COLOR[0])
+        backgroundColor.setGreen(self.config.BG_COLOR[1])
+        backgroundColor.setBlue(self.config.BG_COLOR[2])
+        backgroundColor.setAlpha(self.config.BG_COLOR[3])
+        customPainter = QtGui.QPainter(self)
+        customPainter.fillRect(self.rect(), backgroundColor)
 
     def setPopupText(self, text):
         self.label.setText(text)
@@ -229,7 +251,7 @@ class Toast(QtWidgets.QWidget):
             y = screen_size[1] - win_size[1] - 10
             self.setGeometry(x, y, self.width(), self.height())
         except Exception as e:
-            print (e)
+            print(e)
 
     def setConfig(self, config):
         self.config = config
@@ -282,6 +304,7 @@ if __name__ == '__main__':
     toast = Toast("SIMPLE TITLE", "SIMPLE MESSAGE", "image.png", "", -1)
     toast.config.IMAGE_ALIGN = IMAGE_ALIGN_RIGHT
     toast.config.TEXT_ALIGN = TEXT_ALIGN_RIGHT
+    toast.config.USE_BLUR_BG = False
     #toast.config.SOUND = "sound.wav"
     toast.show()
     sys.exit(app.exec_())
