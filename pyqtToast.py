@@ -1,6 +1,12 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtMultimedia import QSound
 import sys
+from enum import Enum
+from pathlib import Path
+
+class ImageCrop(Enum):
+    DEFAULT = 1
+    CIRCLE = 2
 
 IMAGE_ALIGN_LEFT = "left"
 IMAGE_ALIGN_RIGHT = "right"
@@ -8,7 +14,6 @@ IMAGE_ALIGN_RIGHT = "right"
 TEXT_ALIGN_LEFT = "left"
 TEXT_ALIGN_RIGHT = "right"
 TEXT_ALIGN_CENTER = "center"
-
 class Config:
     def __init__(self):
         self.DURATION = 5000
@@ -20,6 +25,7 @@ class Config:
         self.TEXT_ALIGN = TEXT_ALIGN_LEFT
         self.DRAG_SUPPORT = False
         self.IMAGE = ""
+        self.IMAGE_CROP = ImageCrop.CIRCLE
         self.SOUND = ""
         self.TITLE = ""
         self.MESSAGE = ""
@@ -42,13 +48,64 @@ class Toast(QtWidgets.QWidget):
         self.__isClosed = False
         
         super(Toast, self).__init__()
-        self.setWindowFlags(QtCore.Qt.SplashScreen | QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
 
         self.setMinimumSize(QtCore.QSize(300, 100))
         self.animation = QtCore.QPropertyAnimation(self, b"windowOpacity", self)
         self.animation.finished.connect(self.hide)
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.hideAnimation)
+
+    def _maskImage(self, imgdata, imgtype ='png', size = 100): 
+        # Load image 
+        image = QtGui.QImage.fromData(imgdata, imgtype) 
+
+        # convert image to 32-bit ARGB (adds an alpha 
+        # channel ie transparency factor): 
+        image.convertToFormat(QtGui.QImage.Format_ARGB32) 
+
+        # Crop image to a square: 
+        imgsize = min(image.width(), image.height()) 
+        rect = QtCore.QRect( 
+            int((image.width() - imgsize) / 2), 
+            int((image.height() - imgsize) / 2), 
+            imgsize, 
+            imgsize, 
+         ) 
+
+        image = image.copy(rect) 
+
+        # Create the output image with the same dimensions  
+        # and an alpha channel and make it completely transparent: 
+        out_img = QtGui.QImage(imgsize, imgsize, QtGui.QImage.Format_ARGB32) 
+        out_img.fill(QtCore.Qt.transparent) 
+
+        # Create a texture brush and paint a circle  
+        # with the original image onto the output image: 
+        brush = QtGui.QBrush(image) 
+
+        # Paint the output image 
+        painter = QtGui.QPainter(out_img) 
+        painter.setBrush(brush) 
+
+        # Don't draw an outline 
+        painter.setPen(QtCore.Qt.NoPen) 
+
+        # drawing circle 
+        painter.drawEllipse(0, 0, imgsize, imgsize) 
+    
+        # closing painter event 
+        painter.end() 
+
+        # Convert the image to a pixmap and rescale it.  
+        pr = QtGui.QWindow().devicePixelRatio() 
+        pm = QtGui.QPixmap.fromImage(out_img) 
+        pm.setDevicePixelRatio(pr) 
+        size *= pr 
+        pm = pm.scaled(int(size), int(size), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+
+        # return back the pixmap data 
+        return pm 
 
     def setupUi(self):
         self.hLayout = QtWidgets.QHBoxLayout(self)
@@ -65,7 +122,7 @@ class Toast(QtWidgets.QWidget):
         if (self.config.IMAGE != "" and self.config.IMAGE_ALIGN == IMAGE_ALIGN_RIGHT) or self.config.IMAGE == "":
             self.hLayout.addWidget(self.label)
         appearance = self.palette()
-        appearance.setColor(QtGui.QPalette.Normal, QtGui.QPalette.Window,
+        appearance.setColor(QtGui.QPalette.All, QtGui.QPalette.Window,
                      QtGui.QColor(self.config.BG_COLOR[0],self.config.BG_COLOR[1],self.config.BG_COLOR[2]))
         self.setPalette(appearance)
         
@@ -75,8 +132,13 @@ class Toast(QtWidgets.QWidget):
         
         if self.config.IMAGE != "":
             self.limage = QtWidgets.QLabel(self)
-            pixmap = QtGui.QPixmap(self.config.IMAGE)
-            pixmap = pixmap.scaled(self.config.IMAGE_SIZE[0], self.config.IMAGE_SIZE[1])
+            self.limage.setStyleSheet("border: 1px solid black;") 
+            if self.config.IMAGE_CROP == ImageCrop.CIRCLE:
+                imgdata = open(self.config.IMAGE, 'rb').read() 
+                pixmap = self._maskImage(imgdata, Path(self.config.IMAGE).suffix, self.config.IMAGE_SIZE[0])
+            else:
+                pixmap = QtGui.QPixmap(self.config.IMAGE)
+                pixmap = pixmap.scaled(self.config.IMAGE_SIZE[0], self.config.IMAGE_SIZE[1])
             self.limage.setPixmap(pixmap)
             self.limage.resize(self.config.IMAGE_SIZE[0], self.config.IMAGE_SIZE[1])
             self.hLayout.addWidget(self.limage)
@@ -101,7 +163,7 @@ class Toast(QtWidgets.QWidget):
             self.hideAnimation()
 
     def mouseMoveEvent(self, event):
-        if event.buttons() == QtCore.Qt.LeftButton and self.config.DND_SUPPORT:
+        if event.buttons() == QtCore.Qt.LeftButton and self.config.DRAG_SUPPORT:
             self.move(event.globalPos() - self.dragPosition)
             event.accept()
 
@@ -157,26 +219,48 @@ class Toast(QtWidgets.QWidget):
     def setMessage(self, data):
         self.config.MESSAGE = data
 
-    def setImage(self, data):
-        self.config.IMAGE = data
+    def setTextAlign(self, data):
+        self.config.TEXT_ALIGN = data
 
     def setSound(self, data):
         self.config.SOUND = data
 
-    def setImageAlign(self, data):
-        self.config.IMAGE_ALIGN = data
-
-    def setTextAlign(self, data):
-        self.config.TEXT_ALIGN = data
-
     def setDragToast(self, data):
         self.config.DRAG_SUPPORT = data
 
+    def setImage(self, data):
+        self.config.IMAGE = data
+
+    def setImageSize(self, data):
+        self.config.IMAGE_SIZE = (data, data)
+
+    def setImageSize(self, data1, data2):
+        self.config.IMAGE_SIZE = (data1, data2)
+
+    def setImageAlign(self, data):
+        self.config.IMAGE_ALIGN = data
+
+    def setImageCrop(self, data):
+        self.config.IMAGE_CROP = data
+
+    def setDuration(self, data):
+        self.config.DURATION = data
+
+    def setAnimTime(self, data):
+        self.config.ANIM_SHOW_HIDE_TIME = data
+
+    def setBgColor(self, data):
+        self.config.BG_COLOR = data
+
+    def setFgColor(self, data):
+        self.config.FG_COLOR = data
+
+
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    toast = Toast("SIMPLE TITLE", "SIMPLE MESSAGE", "image.png")
+    toast = Toast("SIMPLE TITLE", "SIMPLE MESSAGE", "image.png", "", -1)
     toast.config.IMAGE_ALIGN = IMAGE_ALIGN_RIGHT
     toast.config.TEXT_ALIGN = TEXT_ALIGN_RIGHT
-    toast.config.SOUND = "sound.wav"
+    #toast.config.SOUND = "sound.wav"
     toast.show()
     sys.exit(app.exec_())
