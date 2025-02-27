@@ -4,6 +4,18 @@ Tiny script for cross platform notification with pyqt5
 
 It could use [BlurWindow](https://github.com/Peticali/PythonBlurBehind) if you want blur background
 
+## Dependencies
+
+PyQt5
+```
+python -m pip install PyQt5
+```
+
+If yo wnan blurr background
+```
+python -m pip install BlurWindow
+```
+
 ## Examples:
 
 ![Imgur](https://github.com/J-CITY/pyqt5notification/blob/master/screens/scr1.png)
