@@ -11,7 +11,7 @@ PyQt5
 python -m pip install PyQt5
 ```
 
-If yo wnan blurr background
+If you want blur background
 ```
 python -m pip install BlurWindow
 ```
